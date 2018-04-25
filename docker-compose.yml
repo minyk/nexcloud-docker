@@ -1,0 +1,81 @@
+version: '2'
+services:
+  mysql:
+    restart: always
+    image: mysql:5.7
+    ports:
+      - "13306:3306"
+    volumes:
+      - $PWD/initdb.d:/docker-entrypoint-initdb.d
+    environment:
+      - MYSQL_ROOT_PASSWORD=root123
+      - MYSQL_USER=admin
+      - MYSQL_PASSWORD=admin
+      - MYSQL_DATABASE=defaultdb
+  redis:
+    restart: always
+    image: redis:4.0.8
+    ports:
+      - "16379:6379"
+  influxdb:
+    restart: always
+    image: influxdb:1.4
+    ports:
+      - "18086:8086"
+    environment:
+      - INFLUXDB_RETENTION_ENABLED=true
+      - INFLUXDB_RETENTION_CHECK_INTERVAL=30m0s
+      - INFLUXDB_MONITOR_STORE_DATABASE=_internal
+  zookeeper:
+    image: wurstmeister/zookeeper:3.4.6
+    ports:
+      - "12181:2181"
+  kafka:
+    image: wurstmeister/kafka:1.1.0
+    ports:
+      - "19092:9092"
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: 192.168.99.100
+      KAFKA_CREATE_TOPICS: "test:1:1"
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+    depends_on:
+      - zookeeper
+  minicollector:
+    image: nexclipper/minicollector:latest
+    ports:
+      - "19000:9000"
+    environment:
+      - MYSQL_DBNAME=defaultdb
+      - MYSQL_URL=mysql:3306
+      - MYSQL_PASSWORD=root123
+      - MYSQL_USERNAME=root
+    depends_on:
+      - mysql
+  miniworkflow:
+    image: nexclipper/miniworkflow:latest
+    ports:
+      - "29000:9000"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - MYSQL_DBNAME=defaultdb
+      - MYSQL_URL=mysql:3306
+      - MYSQL_PASSWORD=root123
+      - MYSQL_USERNAME=root
+    depends_on:
+      - redis
+      - mysql
+  nexclipperui:
+    image: nexclipper/nexclipperui:latest
+    ports:
+      - "39000:9000"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - MYSQL_DBNAME=defaultdb
+      - MYSQL_URL=mysql:3306
+      - MYSQL_PASSWORD=root123
+      - MYSQL_USERNAME=root
+    depends_on:
+      - redis
+      - mysql
